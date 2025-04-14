@@ -95,6 +95,23 @@ app.get('/shows/list', (req, res) => {
   });
 });
 
+app.get('/shows/view/:id', (req, res) => {
+    const showId = req.params.id;
+  
+    pool.query('SELECT * FROM shows WHERE id = ?', [showId], (err, results) => {
+      if (err) {
+        console.error('Error fetching show by ID:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
+  
+      if (results.length === 0) {
+        return res.status(404).json({ status: 'not_found', message: 'Show not found' });
+      }
+  
+      res.json({ status: 'success', data: results[0] });
+    });
+  });
+
 
 app.get('/movies/ratings', (req, res) => {
   const query = `
