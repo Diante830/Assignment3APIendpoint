@@ -31,7 +31,12 @@ app.get('/', (req, res) => {
 
 // Users
 app.get('/v1/users/list', (req, res) => {
+  console.log('Request for /v1/users/list received');
   pool.query('SELECT id, fname, lname, email, account_status FROM users ORDER BY id', (err, results) => {
+    if (err) {
+      console.error('Error retrieving users:', err);
+      return res.status(500).json({ status: 'error', message: 'Database error' });
+    }
     res.json({ status: 'success', data: results });
   });
 });
@@ -42,6 +47,10 @@ app.post('/v1/users/create', (req, res) => {
     'INSERT INTO users (fname, lname, email, registration_date, account_status) VALUES (?, ?, ?, NOW(), ?)',
     [fname, lname, email, 'Pending Verification'],
     (err, result) => {
+      if (err) {
+        console.error('Error creating user:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
       res.json({ status: 'success', message: 'New user created' });
     }
   );
@@ -49,20 +58,57 @@ app.post('/v1/users/create', (req, res) => {
 
 // Movies
 app.get('/v1/movies/list', (req, res) => {
+  console.log('Request for /v1/movies/list received');
   pool.query('SELECT * FROM movies ORDER BY release_date DESC', (err, results) => {
+    if (err) {
+      console.error('Error retrieving movies:', err);
+      return res.status(500).json({ status: 'error', message: 'Database error' });
+    }
     res.json({ status: 'success', data: results });
   });
 });
 
+// View a specific movie by ID
+app.get('/v1/movies/view/:id', (req, res) => {
+  console.log('Request for /v1/movies/view/:id received');
+  const movieId = req.params.id;
+
+  pool.query(
+    'SELECT * FROM movies WHERE id = ?',
+    [movieId],
+    (err, results) => {
+      if (err) {
+        console.error('Error retrieving movie by ID:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ status: 'not_found', message: 'Movie not found' });
+      }
+
+      res.json({
+        status: 'success',
+        data: results[0],
+      });
+    }
+  );
+});
+
 // Shows
 app.get('/v1/shows/list', (req, res) => {
+  console.log('Request for /v1/shows/list received');
   pool.query('SELECT * FROM shows ORDER BY release_date DESC', (err, results) => {
+    if (err) {
+      console.error('Error retrieving shows:', err);
+      return res.status(500).json({ status: 'error', message: 'Database error' });
+    }
     res.json({ status: 'success', data: results });
   });
 });
 
 // Movie Ratings
 app.get('/v1/movies/ratings', (req, res) => {
+  console.log('Request for /v1/movies/ratings received');
   pool.query(
     `SELECT mr.id, u.fname, u.lname, m.title, mr.review, mr.rating
      FROM movie_ratings mr
@@ -70,6 +116,10 @@ app.get('/v1/movies/ratings', (req, res) => {
      JOIN movies m ON m.id = mr.movie_id
      ORDER BY mr.id DESC`,
     (err, results) => {
+      if (err) {
+        console.error('Error retrieving movie ratings:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
       res.json({ status: 'success', data: results });
     }
   );
@@ -81,6 +131,10 @@ app.post('/v1/movies/ratings/add', (req, res) => {
     'INSERT INTO movie_ratings (user_id, movie_id, review, rating) VALUES (?, ?, ?, ?)',
     [user_id, movie_id, review, rating],
     (err, result) => {
+      if (err) {
+        console.error('Error adding movie rating:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
       res.json({ status: 'success', message: 'Movie rating added' });
     }
   );
@@ -88,6 +142,7 @@ app.post('/v1/movies/ratings/add', (req, res) => {
 
 // Show Ratings
 app.get('/v1/shows/ratings', (req, res) => {
+  console.log('Request for /v1/shows/ratings received');
   pool.query(
     `SELECT sr.id, u.fname, u.lname, s.tvshow, sr.review, sr.rating
      FROM show_ratings sr
@@ -95,6 +150,10 @@ app.get('/v1/shows/ratings', (req, res) => {
      JOIN shows s ON s.id = sr.show_id
      ORDER BY sr.id DESC`,
     (err, results) => {
+      if (err) {
+        console.error('Error retrieving show ratings:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
       res.json({ status: 'success', data: results });
     }
   );
@@ -106,6 +165,10 @@ app.post('/v1/shows/ratings/add', (req, res) => {
     'INSERT INTO show_ratings (user_id, show_id, review, rating) VALUES (?, ?, ?, ?)',
     [user_id, show_id, review, rating],
     (err, result) => {
+      if (err) {
+        console.error('Error adding show rating:', err);
+        return res.status(500).json({ status: 'error', message: 'Database error' });
+      }
       res.json({ status: 'success', message: 'Show rating added' });
     }
   );
