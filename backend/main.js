@@ -26,7 +26,7 @@ app.listen(port, () => {
 
 // Base route
 app.get('/', (req, res) => {
-  res.json({ info: 'Backend for Movie Reviewer, set up by Diante.HM!' });
+  res.json({ info: 'Backend for Movie Reviewer, set up by fdsfdsDiante.HM!' });
 });
 
 // Users
