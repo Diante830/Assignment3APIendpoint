@@ -41,6 +41,7 @@ app.get('/users/list', (req, res) => {
   });
 });
 
+
 app.post('/users/create', (req, res) => {
   const { fname, lname, email } = req.body;
   pool.query(
