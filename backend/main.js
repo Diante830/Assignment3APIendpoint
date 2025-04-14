@@ -1,126 +1,112 @@
-// Get the client
 const mysql = require('mysql2');
-require('dotenv').config()
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 
-// ATTENTION REQUIRED: Create the connection to database
+const app = express();
+const port = 3001;
 
+// DB Connection
 const pool = mysql.createPool({
-    host: process.env.SQL_HOSTNAME,
-    user: process.env.SQL_USERNAME,
-    password: process.env.SQL_PASSWORD,
-    database: process.env.SQL_DBNAME,
+  host: process.env.SQL_HOSTNAME,
+  user: process.env.SQL_USERNAME,
+  password: process.env.SQL_PASSWORD,
+  database: process.env.SQL_DBNAME,
 });
 
-// Set up the API
-const express = require('express')
-var cors = require('cors');
-const bodyParser = require('body-parser')
-const app = express()
-const port = 3001
-
-// Make it available for public access
-
-app.use(function (req, res, next) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', '*');
-    next();
-});
-
+// Middleware
 app.use(cors());
-app.options("*", cors());
-
-app.set('json spaces', 2)
-app.use(bodyParser.json({
-    limit: "50mb"
-}))
-app.use(
-    bodyParser.urlencoded({
-        extended: true,
-    })
-)
-
-// Listen to outside connection
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.listen(port, () => {
-    console.log(`App running on port ${port}. Control+C to exit.`)
-})
+  console.log(`Movie Reviewer API running on port ${port}`);
+});
 
-// Spit out data
+// Base route
+app.get('/', (req, res) => {
+  res.json({ info: 'Backend for Movie Reviewer, set up by Diante.HM!' });
+});
 
-app.get('/', (request, response) => {
-    response.json(
-        {
-            info: 'Backend for Movie Reviewer, set up by Diante.HM!'
-        }
-    )
-})
+// Users
+app.get('/v1/users/list', (req, res) => {
+  pool.query('SELECT id, fname, lname, email, account_status FROM users ORDER BY id', (err, results) => {
+    res.json({ status: 'success', data: results });
+  });
+});
 
-
-app.get("/v1/users/list", (request, response) => {
-    pool.query("SELECT fname, lname, email FROM users ORDER BY id", [], (error, result) => {
-        response.json(
-            {
-                status: "success",
-                data: result
-            }
-        )
-    });
-})
-
-app.post("/v1/users/create", (request, response) => {
-
-    const fname = request.body.fname;
-    const lname = request.body.lname;
-    const email = request.body.email;
-
-    pool.query(
-        "INSERT INTO users (fname, lname, email) VALUES (?, ?, ?)",
-        [fname, lname, email], (error, result) => {
-            response.json(
-                {
-                    status: "success",
-                    message: "New user created"
-                }
-            )
-        }
-
-    )
-
-})
-
-
-app.get("/v1/rentals/list", (request, response) => {
-    console.log(request.query.user);
-
-    const userId = request.query.user;
-
-    if (!userId) {
-        // DISPLAY ALL
-        pool.query(`SELECT title, fname, lname, start_date FROM rentals
-            INNER JOIN users ON users.id = rentals.user_id
-            INNER JOIN books ON books.id = rentals.book_id
-            ORDER BY rentals.id`, [], (error, result) => {
-            response.json(
-                {
-                    status: "success",
-                    data: result
-                }
-            )
-        });
-    } else {
-        // DISPLAY ONLY FOR USER
-        pool.query(`SELECT title, fname, lname, start_date FROM rentals
-            INNER JOIN users ON users.id = rentals.user_id
-            INNER JOIN books ON books.id = rentals.book_id
-            WHERE users.id = ?
-            ORDER BY rentals.id`, [request.query.user], (error, result) => {
-            response.json(
-                {
-                    status: "success",
-                    data: result
-                }
-            )
-        });
+app.post('/v1/users/create', (req, res) => {
+  const { fname, lname, email } = req.body;
+  pool.query(
+    'INSERT INTO users (fname, lname, email, registration_date, account_status) VALUES (?, ?, ?, NOW(), ?)',
+    [fname, lname, email, 'Pending Verification'],
+    (err, result) => {
+      res.json({ status: 'success', message: 'New user created' });
     }
+  );
+});
 
-})
+// Movies
+app.get('/v1/movies/list', (req, res) => {
+  pool.query('SELECT * FROM movies ORDER BY release_date DESC', (err, results) => {
+    res.json({ status: 'success', data: results });
+  });
+});
+
+// Shows
+app.get('/v1/shows/list', (req, res) => {
+  pool.query('SELECT * FROM shows ORDER BY release_date DESC', (err, results) => {
+    res.json({ status: 'success', data: results });
+  });
+});
+
+// Movie Ratings
+app.get('/v1/movies/ratings', (req, res) => {
+  pool.query(
+    `SELECT mr.id, u.fname, u.lname, m.title, mr.review, mr.rating
+     FROM movie_ratings mr
+     JOIN users u ON u.id = mr.user_id
+     JOIN movies m ON m.id = mr.movie_id
+     ORDER BY mr.id DESC`,
+    (err, results) => {
+      res.json({ status: 'success', data: results });
+    }
+  );
+});
+
+app.post('/v1/movies/ratings/add', (req, res) => {
+  const { user_id, movie_id, review, rating } = req.body;
+  pool.query(
+    'INSERT INTO movie_ratings (user_id, movie_id, review, rating) VALUES (?, ?, ?, ?)',
+    [user_id, movie_id, review, rating],
+    (err, result) => {
+      res.json({ status: 'success', message: 'Movie rating added' });
+    }
+  );
+});
+
+// Show Ratings
+app.get('/v1/shows/ratings', (req, res) => {
+  pool.query(
+    `SELECT sr.id, u.fname, u.lname, s.tvshow, sr.review, sr.rating
+     FROM show_ratings sr
+     JOIN users u ON u.id = sr.user_id
+     JOIN shows s ON s.id = sr.show_id
+     ORDER BY sr.id DESC`,
+    (err, results) => {
+      res.json({ status: 'success', data: results });
+    }
+  );
+});
+
+app.post('/v1/shows/ratings/add', (req, res) => {
+  const { user_id, show_id, review, rating } = req.body;
+  pool.query(
+    'INSERT INTO show_ratings (user_id, show_id, review, rating) VALUES (?, ?, ?, ?)',
+    [user_id, show_id, review, rating],
+    (err, result) => {
+      res.json({ status: 'success', message: 'Show rating added' });
+    }
+  );
+});
